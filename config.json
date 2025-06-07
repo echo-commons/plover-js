@@ -1,0 +1,17 @@
+{
+    "targets": [
+        { "host": "localhost", "port": 4000, "activeConnections": 0 },
+        { "host": "localhost", "port": 4001, "activeConnections": 0 },
+        { "host": "localhost", "port": 4002, "activeConnections": 0 }
+    ],
+    "ssl": {
+        "key": "./ssl/key.pem",
+        "cert": "./ssl/cert.pem"
+    },
+    "maxConcurrentConnections": 100,
+    "rateLimiter": {
+        "point": 20,
+        "duration": 1,
+        "block": 10
+    }
+}

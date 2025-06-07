@@ -1,0 +1,27 @@
+{
+  "name": "plover-js",
+  "version": "1.0.0",
+  "description": "Simple level 7 HTTPS configurable load balancer that distributes traffic across multiple backend servers with connection-based load balancing and rate limiting.",
+  "main": "balancer.js",
+  "scripts": {
+    "start": "node balancer.js"
+  },
+  "keywords": [
+    "loadbalancer",
+    "load_balancer",
+    "plover-js",
+    "EOSL"
+  ],
+  "author": "Bilal Boudjemline",
+  "license": "EOSL (Echo Open Source Licence)",
+  "dependencies": {
+    "async-mutex": "^0.5.0",
+    "dotenv": "^16.5.0",
+    "fs": "0.0.2",
+    "http-proxy": "^1.18.1",
+    "https": "^1.0.0",
+    "rate-limiter-flexible": "^7.1.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  }
+}
