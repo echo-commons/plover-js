@@ -1,0 +1,18 @@
+PLEASE REMOVE -exemple from config-exemple.json !
+
+{
+    "targets": [
+        { "host": "localhost", "port": 4000, "activeConnections": 0 }.
+        { "host": "localhost", "port": 4001, "activeConnections": 0 }
+    ],
+    "ssl": {
+        "key": "./configurations/ssl/key.pem",
+        "cert": "./configurations/ssl/cert.pem"
+    },
+    "maxConcurrentConnections": 100,
+    "rateLimiter": {
+        "point": 20,
+        "duration": 1,
+        "block": 10
+    }
+}
