@@ -1,18 +1,48 @@
+require("./helpers/welcome")();
 const https = require('https');
 const fs = require('fs');
 const httpProxy = require('http-proxy');
 const Logger = require("./loggers/loggers");
 const config = require("./config.json");
 require("dotenv").config();
-const { Mutex } = require('async-mutex');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
+const connectionMutex = require("./configurations/mutex/mutex")
 
 const targets = config.targets;
 const MAX_CONCURRENT_CONNECTIONS = parseInt(config.maxConcurrentConnections) || 100;
 let currentConnections = 0;
 
-const connectionMutex = new Mutex();
+/**
+ * Selects the least overloaded target server in order to balance the load.
+ * @returns {number} The index.
+ */
+function pickTargetIndex() {
+    let minIdx = 0;
+    let minConn = targets[0].activeConnections;
+    for (let i = 1; i < targets.length; i++) {
+        if (targets[i].activeConnections < minConn) {
+            minConn = targets[i].activeConnections;
+            minIdx = i;
+        }
+    }
+    return minIdx;
+}
 
+/**
+ * Atomic process that counts the number of active connections to a target server.
+ * @param {{ host: string, port: string|number, activeConnections: number }} target The target server.
+ * @returns {Promise<void>}
+ */
+async function decrementCounters(target) {
+    await connectionMutex.runExclusive(() => {
+        if (target.activeConnections > 0) target.activeConnections--;
+        if (currentConnections > 0) currentConnections--;
+    });
+}
+
+/**
+ * Blocks users when the number of points consumed exceeds the authorized limit during the defined period.
+ */
 const rateLimiter = new RateLimiterMemory({
     points: parseInt(config.rateLimiter.point) || 20, 
     duration: parseInt(config.rateLimiter.duration) || 1,
@@ -33,25 +63,6 @@ const httpsAgent = new https.Agent({
     keepAliveMsecs: 30000,
 });
 
-function pickTargetIndex() {
-    let minIdx = 0;
-    let minConn = targets[0].activeConnections;
-    for (let i = 1; i < targets.length; i++) {
-        if (targets[i].activeConnections < minConn) {
-            minConn = targets[i].activeConnections;
-            minIdx = i;
-        }
-    }
-    return minIdx;
-}
-
-async function decrementCounters(target) {
-    await connectionMutex.runExclusive(() => {
-        if (target.activeConnections > 0) target.activeConnections--;
-        if (currentConnections > 0) currentConnections--;
-    });
-}
-
 const server = https.createServer(options, async (req, res) => {
     try {
         const ip = req.socket.remoteAddress;
@@ -59,7 +70,7 @@ const server = https.createServer(options, async (req, res) => {
 
         let allowed = await connectionMutex.runExclusive(() => {
             if (currentConnections >= MAX_CONCURRENT_CONNECTIONS) return false;
-            currentConnections++;
+                currentConnections++;
             return true;
         });
 
@@ -81,6 +92,7 @@ const server = https.createServer(options, async (req, res) => {
         Logger.info(`Proxying ${req.method} ${req.url} → https://${target.host}:${target.port} (activeConnections: ${target.activeConnections})`);
 
         let ended = false;
+        
         function onCloseOrFinish() {
             if (ended) return;
             ended = true;
